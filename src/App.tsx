@@ -25,6 +25,11 @@ import Transactions from "./pages/dashboard/Transactions";
 import Profile from "./pages/dashboard/Profile";
 import ConfirmDeposit from "./pages/dashboard/ConfirmDeposit";
 
+
+// Auth pages
+import ResetPassword from "./pages/auth/ResetPassword";
+import ConfirmPassword from "./pages/auth/ConfirmPassword";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -51,6 +56,11 @@ const App = () => (
           <Route path="profile" element={<Profile />} />
           <Route path="confirm-deposit" element={<ConfirmDeposit />} />
         </Route>
+
+        {/* Auth routes */}
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/confirm-password" element={<ConfirmPassword />} />
+
 
         {/* Catch-all (404) */}
         <Route path="*" element={<NotFound />} />

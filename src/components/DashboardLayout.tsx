@@ -1,11 +1,12 @@
-import { useState } from "react";
-import { Link, Outlet } from "react-router-dom";
+import { useState, useRef, useEffect } from "react";
+import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ArrowDownCircle,
   ArrowUpCircle,
   Clock,
   User,
+  Settings,
   Menu,
   X,
   ChevronDown,
@@ -13,12 +14,36 @@ import {
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // Dropdown state and ref
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    if (dropdownOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    } else {
+      document.removeEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [dropdownOpen]);
 
   const menuItems = [
     { name: "Overview", icon: <LayoutDashboard size={18} />, path: "/dashboard" },
     { name: "Deposit", icon: <ArrowDownCircle size={18} />, path: "/dashboard/deposit" },
     { name: "Withdraw", icon: <ArrowUpCircle size={18} />, path: "/dashboard/withdraw" },
     { name: "Transactions", icon: <Clock size={18} />, path: "/dashboard/transactions" },
+    { name: "Settings", icon: <Settings size={18} />, path: "/dashboard/settings" },
     { name: "Profile", icon: <User size={18} />, path: "/dashboard/profile" },
   ];
 
@@ -30,31 +55,39 @@ export default function DashboardLayout() {
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-border">
-          <h1 className="text-lg font-bold text-primary">MetalTropic</h1>
+        <div className="flex items-center justify-between py-6 px-4 border-b border-border">
+          <h1 className="text-lg font-bold">
+            <span className="text-white">Legacy</span>
+            <span className="text-crypto-purple">Prime</span>
+          </h1>
           <button className="lg:hidden" onClick={() => setSidebarOpen(false)}>
             <X size={20} />
           </button>
         </div>
-        <nav className="flex flex-col p-4 space-y-2">
-          {menuItems.map((item) => (
-            <Link
-              key={item.name}
-              to={item.path}
-              className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors hover:bg-muted"
-              onClick={() => setSidebarOpen(false)}
-            >
-              {item.icon}
-              {item.name}
-            </Link>
-          ))}
+          <nav className="flex flex-col p-4 space-y-2 mt-8">
+          {menuItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            return (
+              <Link
+                key={item.name}
+                to={item.path}
+                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                  isActive ? "bg-muted text-foreground" : "hover:bg-muted"
+                }`}
+                onClick={() => setSidebarOpen(false)}
+              >
+                {item.icon}
+                <span>{item.name}</span>
+              </Link>
+            );
+          })}
         </nav>
       </aside>
 
       {/* Main Content */}
       <div className="flex flex-1 flex-col lg:ml-64">
         {/* Topbar */}
-        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-3 lg:px-6">
+        <header className="flex items-center justify-between border-b border-border bg-card px-4 py-[1.35rem] lg:px-6">
           {/* Mobile sidebar toggle */}
           <button className="lg:hidden" onClick={() => setSidebarOpen(true)}>
             <Menu size={22} />
@@ -64,14 +97,50 @@ export default function DashboardLayout() {
           <h2 className="text-lg font-semibold">Welcome Giddy</h2>
 
           {/* Profile section (dummy) */}
-          <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-3" ref={dropdownRef}>
             <img
               src="https://pin.it/6alzSqpPm"
               alt="Profile"
               className="h-8 w-8 rounded-full border border-border"
             />
             <span className="text-sm font-medium">Giddyjr7</span>
-            <ChevronDown size={18} className="text-muted-foreground" />
+            <button
+              type="button"
+              className="focus:outline-none"
+              onClick={() => setDropdownOpen((open) => !open)}
+              aria-label="Open profile menu"
+            >
+              <ChevronDown size={18} className="text-muted-foreground" />
+            </button>
+            {dropdownOpen && (
+              <div className="absolute right-0 top-12 z-50 w-44 rounded-lg border border-border bg-card shadow-lg py-2 animate-fade-in">
+                <button
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    navigate('/dashboard/profile');
+                  }}
+                >
+                  Profile
+                </button>
+                <Link
+                  to="/dashboard/settings"
+                  className="block px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  onClick={() => setDropdownOpen(false)}
+                >
+                  Change Password
+                </Link>
+                <button
+                  className="block w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors text-destructive"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    window.location.href = 'http://localhost:8080/';
+                  }}
+                >
+                  Logout
+                </button>
+              </div>
+            )}
           </div>
         </header>
 

@@ -23,6 +23,7 @@ import Deposit from "./pages/dashboard/Deposit";
 import Withdraw from "./pages/dashboard/Withdraw";
 import Transactions from "./pages/dashboard/Transactions";
 import Profile from "./pages/dashboard/Profile";
+import Settings from "./pages/dashboard/Settings";
 import ConfirmDeposit from "./pages/dashboard/ConfirmDeposit";
 
 
@@ -56,6 +57,7 @@ const App = () => (
           <Route path="withdraw" element={<Withdraw />} />
           <Route path="transactions" element={<Transactions />} />
           <Route path="profile" element={<Profile />} />
+          <Route path="settings" element={<Settings />} />
           <Route path="confirm-deposit" element={<ConfirmDeposit />} />
         </Route>
 

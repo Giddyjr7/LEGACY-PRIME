@@ -1,4 +1,28 @@
 import { ArrowDownCircle, ArrowUpCircle, Clock, PlusCircle } from "lucide-react";
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+} from 'chart.js';
+import { Line } from 'react-chartjs-2';
+
+// Register ChartJS components
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
 export default function Overview() {
   return (
@@ -86,11 +110,75 @@ export default function Overview() {
         </div>
       </div>
 
-      {/* Investment Performance (Placeholder) */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      {/* Investment Performance Chart */}
+      <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="text-lg font-semibold mb-4">Investment Performance</h2>
-        <div className="h-48 flex items-center justify-center text-muted-foreground">
-          📊 Chart Placeholder (Add Recharts/Chart.js later)
+        <div className="h-[300px]">
+          <Line
+            data={{
+              labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep'],
+              datasets: [
+                {
+                  label: 'Portfolio Value',
+                  data: [10000, 11200, 10800, 12400, 12000, 13200, 15000, 14800, 16000],
+                  borderColor: 'rgb(124, 58, 237)', // crypto-purple
+                  backgroundColor: 'rgba(124, 58, 237, 0.1)',
+                  tension: 0.4,
+                  fill: true,
+                },
+                {
+                  label: 'Profit/Loss',
+                  data: [0, 1200, -400, 1600, -400, 1200, 1800, -200, 1200],
+                  borderColor: 'rgb(34, 197, 94)', // green-500
+                  backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                  tension: 0.4,
+                  fill: true,
+                }
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              scales: {
+                y: {
+                  beginAtZero: true,
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.1)',
+                  },
+                  ticks: {
+                    callback: (value) => '$' + value.toLocaleString(),
+                  },
+                },
+                x: {
+                  grid: {
+                    color: 'rgba(255, 255, 255, 0.1)',
+                  },
+                },
+              },
+              plugins: {
+                legend: {
+                  position: 'top' as const,
+                  labels: {
+                    padding: 20,
+                  },
+                },
+                tooltip: {
+                  callbacks: {
+                    label: (context) => {
+                      let label = context.dataset.label || '';
+                      if (label) {
+                        label += ': ';
+                      }
+                      if (context.parsed.y !== null) {
+                        label += '$' + context.parsed.y.toLocaleString();
+                      }
+                      return label;
+                    },
+                  },
+                },
+              },
+            }}
+          />
         </div>
       </div>
     </div>

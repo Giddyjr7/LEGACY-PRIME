@@ -33,7 +33,7 @@ const Sidebar = () => {
         ${isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         <div className="p-6 text-white text-2xl font-bold">
-          Metal<span className="text-crypto-purple">Tropic</span>
+          Legacy<span className="text-crypto-purple">Prime</span>
         </div>
 
         <ul className="mt-6 space-y-2">

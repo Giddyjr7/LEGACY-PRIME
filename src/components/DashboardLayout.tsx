@@ -66,7 +66,7 @@ export default function DashboardLayout() {
           {/* Profile section (dummy) */}
           <div className="flex items-center gap-3">
             <img
-              src="https://via.placeholder.com/32"
+              src="https://pin.it/6alzSqpPm"
               alt="Profile"
               className="h-8 w-8 rounded-full border border-border"
             />

@@ -29,6 +29,8 @@ import ConfirmDeposit from "./pages/dashboard/ConfirmDeposit";
 // Auth pages
 import ResetPassword from "./pages/auth/ResetPassword";
 import ConfirmPassword from "./pages/auth/ConfirmPassword";
+import VerifyOtp from "./pages/auth/VerifyOtp";
+import CompleteProfile from "./pages/auth/CompleteProfile";
 
 const queryClient = new QueryClient();
 
@@ -60,6 +62,9 @@ const App = () => (
         {/* Auth routes */}
         <Route path="/reset-password" element={<ResetPassword />} />
         <Route path="/confirm-password" element={<ConfirmPassword />} />
+        <Route path="/verify-otp" element={<VerifyOtp />} />
+        <Route path="/complete-profile" element={<CompleteProfile />} />
+
 
 
         {/* Catch-all (404) */}

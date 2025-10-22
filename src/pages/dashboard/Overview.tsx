@@ -1,4 +1,5 @@
 import { ArrowDownCircle, ArrowUpCircle, Clock, PlusCircle } from "lucide-react";
+import { Link } from "react-router-dom";
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -62,15 +63,24 @@ export default function Overview() {
 
       {/* Quick Actions */}
       <div className="grid gap-4 md:grid-cols-3">
-        <button className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm font-medium transition hover:bg-muted">
+        <Link
+          to="/dashboard/deposit"
+          className="flex items-center justify-center gap-2 rounded-xl border border-green-500/20 bg-green-500/10 p-4 text-sm font-medium text-green-500 transition hover:bg-green-500/20"
+        >
           <ArrowDownCircle size={18} /> Deposit Now
-        </button>
-        <button className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm font-medium transition hover:bg-muted">
+        </Link>
+        <Link
+          to="/dashboard/withdraw"
+          className="flex items-center justify-center gap-2 rounded-xl border border-destructive/20 bg-destructive/10 p-4 text-sm font-medium text-destructive transition hover:bg-destructive/20"
+        >
           <ArrowUpCircle size={18} /> Withdraw Now
-        </button>
-        <button className="flex items-center justify-center gap-2 rounded-xl border border-border bg-card p-4 text-sm font-medium transition hover:bg-muted">
+        </Link>
+        <Link
+          to="/dashboard/transactions"
+          className="flex items-center justify-center gap-2 rounded-xl border border-blue-500/20 bg-blue-500/10 p-4 text-sm font-medium text-blue-500 transition hover:bg-blue-500/20"
+        >
           <Clock size={18} /> View Transactions
-        </button>
+        </Link>
       </div>
 
       {/* Recent Transactions */}

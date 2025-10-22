@@ -1,5 +1,7 @@
 import { ArrowDownCircle, ArrowUpCircle, Clock, PlusCircle } from "lucide-react";
 import { Link } from "react-router-dom";
+import { useEffect, useState } from 'react';
+import FlashMessage from '@/components/FlashMessage';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -26,8 +28,40 @@ ChartJS.register(
 );
 
 export default function Overview() {
+  const [flash, setFlash] = useState<string | null>(null);
+
+  useEffect(() => {
+    try {
+  const justRegistered = sessionStorage.getItem('justRegistered');
+  const justLoggedIn = sessionStorage.getItem('justLoggedIn');
+  const depositMessage = sessionStorage.getItem('depositMessage');
+  const withdrawMessage = sessionStorage.getItem('withdrawMessage');
+
+      if (justRegistered) {
+        const data = JSON.parse(justRegistered);
+        setFlash(`Registration successful, welcome ${data.username}`);
+        sessionStorage.removeItem('justRegistered');
+      } else if (justLoggedIn) {
+        const data = JSON.parse(justLoggedIn);
+        setFlash(`Welcome back ${data.username}`);
+        sessionStorage.removeItem('justLoggedIn');
+      } else if (depositMessage) {
+        const data = JSON.parse(depositMessage);
+        setFlash(data.message);
+        sessionStorage.removeItem('depositMessage');
+      } else if (withdrawMessage) {
+        const data = JSON.parse(withdrawMessage);
+        setFlash(data.message);
+        sessionStorage.removeItem('withdrawMessage');
+      }
+    } catch (err) {
+      // ignore parse errors
+    }
+  }, []);
+
   return (
     <div className="space-y-6">
+      {flash && <FlashMessage message={flash} onClose={() => setFlash(null)} duration={10000} />}
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold">Overview</h1>

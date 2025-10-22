@@ -1,4 +1,4 @@
-import { useLocation } from "react-router-dom";
+import { useLocation, Link } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
@@ -17,14 +17,6 @@ const ConfirmDeposit = () => {
       {/* Top header bar */}
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-primary">Confirm Deposit</h2>
-        <div className="flex items-center space-x-3">
-          <span className="font-medium">John Doe</span>
-          <img
-            src="https://via.placeholder.com/40"
-            alt="profile"
-            className="w-10 h-10 rounded-full"
-          />
-        </div>
       </div>
 
       {/* Confirmation Card */}
@@ -59,8 +51,16 @@ const ConfirmDeposit = () => {
             </p>
           </div>
 
-          <Button className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl">
-            Pay Now
+          <Button 
+            asChild 
+            className="w-full bg-primary hover:opacity-90 text-primary-foreground rounded-xl"
+            onClick={() => {
+              sessionStorage.setItem('depositMessage', JSON.stringify({
+                message: `Your deposit of $${amount} is being processed...`
+              }));
+            }}
+          >
+            <Link to="/dashboard">Pay Now</Link>
           </Button>
         </CardContent>
       </Card>

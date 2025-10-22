@@ -9,6 +9,9 @@ const Login = () => {
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
     // ✅ Later replace with backend auth logic
+    try {
+      sessionStorage.setItem('justLoggedIn', JSON.stringify({ username: 'Giddyjr7' }));
+    } catch (err) {}
     navigate("/dashboard");
   };
 

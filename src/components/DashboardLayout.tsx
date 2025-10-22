@@ -99,9 +99,15 @@ export default function DashboardLayout() {
           {/* Profile section (dummy) */}
           <div className="relative flex items-center gap-3" ref={dropdownRef}>
             <img
-              src="https://pin.it/6alzSqpPm"
+              src="https://avatars.dicebear.com/api/identicon/giddyjr7.svg"
               alt="Profile"
-              className="h-8 w-8 rounded-full border border-border"
+              className="h-8 w-8 rounded-full border border-border object-cover"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement;
+                // fallback to initials avatar if the image fails to load
+                target.onerror = null;
+                target.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(`<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg" width="64" height="64"><rect width="100%" height="100%" fill="#7c3aed"/><text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="28" fill="#fff" font-family="Arial,Helvetica,sans-serif">GJ</text></svg>`);
+              }}
             />
             <span className="text-sm font-medium">Giddyjr7</span>
             <button

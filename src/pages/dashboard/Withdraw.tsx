@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
 export default function Withdraw() {
   const [selectedMethod, setSelectedMethod] = useState("USDT BEP20");
@@ -87,9 +89,17 @@ export default function Withdraw() {
           </div>
 
           {/* Confirm Button */}
-          <button className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90">
-            Confirm Withdraw
-          </button>
+          <Button 
+            asChild
+            className="w-full rounded-lg bg-primary px-4 py-2 font-medium text-primary-foreground hover:opacity-90"
+            onClick={() => {
+              sessionStorage.setItem('withdrawMessage', JSON.stringify({
+                message: `Your withdrawal request of $${amount || '0.00'} is being processed...`
+              }));
+            }}
+          >
+            <Link to="/dashboard">Confirm Withdraw</Link>
+          </Button>
 
           {/* Info */}
           <p className="text-xs text-muted-foreground">

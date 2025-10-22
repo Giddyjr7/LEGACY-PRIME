@@ -30,6 +30,10 @@ const CompleteProfile = () => {
       clearPending();
 
       // redirect to dashboard (you said backend will protect /dashboard)
+      // set a session flag so dashboard can show a welcome flash message
+      try {
+        sessionStorage.setItem('justRegistered', JSON.stringify({ username: firstName || pendingEmail || 'User' }));
+      } catch (err) {}
       navigate("/dashboard");
     } catch (err) {
       console.error(err);

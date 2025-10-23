@@ -74,22 +74,51 @@ class Investment(models.Model):
         super().save(*args, **kwargs)
 
     def calculate_profit(self):
-        daily_rate = self.plan.daily_roi / 100
-        days = self.plan.duration_days
+        """Calculate investment profit based on daily ROI and compound interest settings"""
+        if self.is_completed:
+            return self.profit
+
+        daily_rate = Decimal(str(self.plan.daily_roi)) / Decimal('100')
+        days_elapsed = min(
+            (timezone.now() - self.created_at).days,
+            self.plan.duration_days
+        )
 
         if self.compound_interest:
-            final_amount = float(self.amount)
-            for _ in range(days):
+            final_amount = Decimal(str(self.amount))
+            for _ in range(days_elapsed):
                 final_amount += final_amount * daily_rate
-            profit = final_amount - float(self.amount)
+            profit = final_amount - Decimal(str(self.amount))
         else:
-            profit = float(self.amount) * daily_rate * days
+            profit = Decimal(str(self.amount)) * daily_rate * Decimal(str(days_elapsed))
 
         self.profit = profit
-        self.total_return = float(self.amount) + profit
-        self.is_completed = timezone.now() >= self.ends_at
-        self.save()
-        return profit
+        self.total_return = Decimal(str(self.amount)) + profit
+        
+        # Mark as completed if duration has passed
+        if timezone.now() >= self.ends_at:
+            self.is_completed = True
+            self.save()
+            
+            # Update user's wallet balance with profit
+            from wallets.models import Wallet
+            wallet = Wallet.objects.get(user=self.user)
+            wallet.balance += self.profit
+            wallet.save()
+
+            # Log profit transaction
+            from transactions.models import TransactionHistory
+            TransactionHistory.objects.create(
+                user=self.user,
+                transaction_type='profit',
+                amount=self.profit,
+                balance_before=wallet.balance - self.profit,
+                balance_after=wallet.balance,
+                status='successful',
+                description=f"Investment profit from {self.plan.name} plan"
+            )
+
+        return self.profit
 
 
 # -----------------------------

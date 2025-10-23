@@ -1,10 +1,19 @@
 from django.http import JsonResponse
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
-from django.contrib.auth import get_user_model
-from .serializers import RegisterSerializer, UserSerializer, ChangePasswordSerializer, ResetPasswordRequestSerializer, SetNewPasswordSerializer
-
 from rest_framework.views import APIView
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.contrib.auth import get_user_model
+from .serializers import (
+    RegisterSerializer, 
+    UserSerializer, 
+    ChangePasswordSerializer, 
+    ResetPasswordRequestSerializer, 
+    SetNewPasswordSerializer
+)
+from .models import OTPVerification
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 from django.contrib.auth.tokens import PasswordResetTokenGenerator 
@@ -22,6 +31,114 @@ class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     serializer_class = RegisterSerializer
     permission_classes = [permissions.AllowAny]
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        headers = self.get_success_headers(serializer.data)
+        
+        return Response({
+            "message": "Registration successful. Please check your email for verification code.",
+            "user": UserSerializer(user).data
+        }, status=status.HTTP_201_CREATED, headers=headers)
+
+class VerifyOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        
+        try:
+            user = User.objects.get(email=email)
+            if user.is_verified:
+                return Response({
+                    'message': 'Account is already verified.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+                
+            otp_obj = OTPVerification.objects.filter(
+                user=user,
+                is_used=False,
+                otp=otp
+            ).latest('created_at')
+            
+            if not otp_obj.is_valid():
+                return Response({
+                    'message': 'OTP has expired. Please request a new one.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Mark OTP as used and verify user
+            otp_obj.is_used = True
+            otp_obj.save()
+            user.is_verified = True
+            user.save()
+            
+            # Generate JWT tokens
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'message': 'Account verified successfully.',
+                'tokens': {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                }
+            })
+            
+        except User.DoesNotExist:
+            return Response({
+                'message': 'User not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except OTPVerification.DoesNotExist:
+            return Response({
+                'message': 'Invalid OTP.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+class ResendOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+    
+    def post(self, request):
+        email = request.data.get('email')
+        try:
+            user = User.objects.get(email=email)
+            
+            if user.is_verified:
+                return Response({
+                    'message': 'Account is already verified.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+            
+            # Generate new OTP
+            otp_obj = OTPVerification.create_otp_for_user(user)
+            
+            # Send email
+            subject = 'New Verification Code - Legacy Prime'
+            message = f'''Here's your new verification code:
+
+{otp_obj.otp}
+
+This code will expire in 10 minutes.
+Do not share this code with anyone.
+'''
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+            
+            return Response({
+                'message': 'New verification code sent successfully.'
+            })
+            
+        except User.DoesNotExist:
+            return Response({
+                'message': 'User not found.'
+            }, status=status.HTTP_404_NOT_FOUND)
+        except Exception as e:
+            return Response({
+                'message': 'Failed to send verification code.'
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Profile endpoint (view/update logged-in user)
 class ProfileView(generics.RetrieveUpdateAPIView):

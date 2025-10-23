@@ -26,10 +26,11 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # Third-party
+    
+    # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
-    "rest_framework.authtoken", 
+    'rest_framework.authtoken',
     'corsheaders',
 
     # Your apps
@@ -133,6 +134,14 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Email configuration
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'  # Update this with your email provider
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = ''  # Add your email
+EMAIL_HOST_PASSWORD = ''  # Add your app password
 
 
 REST_FRAMEWORK = {

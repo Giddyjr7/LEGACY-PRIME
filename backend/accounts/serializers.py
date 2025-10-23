@@ -5,6 +5,9 @@ from django.contrib.auth.password_validation import validate_password
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
 from django.utils.encoding import force_bytes, force_str
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.core.mail import send_mail
+from django.conf import settings
+from .models import OTPVerification
 
 
 
@@ -39,7 +42,33 @@ class RegisterSerializer(serializers.ModelSerializer):
             email=validated_data["email"],
             password=validated_data["password"]
         )
+        
+        # Generate and send OTP
+        otp_obj = OTPVerification.create_otp_for_user(user)
+        self._send_otp_email(user.email, otp_obj.otp)
+        
         return user
+        
+    def _send_otp_email(self, email, otp):
+        subject = 'Verify Your Legacy Prime Account'
+        message = f'''Welcome to Legacy Prime!
+        
+Your verification code is: {otp}
+        
+This code will expire in 10 minutes.
+Do not share this code with anyone.
+'''
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            # Log the error but don't prevent user creation
+            print(f"Failed to send OTP email: {str(e)}")
 
 
 class UserSerializer(serializers.ModelSerializer):

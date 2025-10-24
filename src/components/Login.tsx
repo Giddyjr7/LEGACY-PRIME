@@ -82,14 +82,19 @@ const Login = () => {
               disabled={isLoading}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/80"
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+            {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
+
+          {/* Additional info or errors can go here */}
+          <div className="mt-4 text-sm text-muted-foreground">
+            <p>Not verified? Check your email for the verification code or click <Link to="/verify-otp" className="text-primary hover:underline">here</Link> to verify.</p>
+          </div>
         </CardContent>
 
         <CardFooter className="flex flex-col space-y-3">
           <p className="text-sm text-muted-foreground text-center">
-            Don’t have an account?{" "}
+            Don't have an account?{" "}
             <Link to="/signup" className="text-primary hover:underline">
               Sign up
             </Link>

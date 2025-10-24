@@ -13,6 +13,7 @@ from .serializers import (
     ResetPasswordRequestSerializer, 
     SetNewPasswordSerializer
 )
+
 from .models import OTPVerification
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
@@ -180,7 +181,9 @@ class ChangePasswordView(generics.UpdateAPIView):
 
 # Password reset request endpoint
 class ResetPasswordRequestView(APIView):
+    permission_classes = [permissions.AllowAny]
     def post(self, request):
+        # Use OTP flow for password reset in development
         serializer = ResetPasswordRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
@@ -188,19 +191,67 @@ class ResetPasswordRequestView(APIView):
         try:
             user = User.objects.get(email=email)
         except User.DoesNotExist:
-            return Response({"detail": "If that email exists, a reset link will be sent."})
+            # Do not reveal whether the email exists
+            return Response({"message": "If that email exists, an OTP will be sent."})
 
-        uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
-        token = PasswordResetTokenGenerator().make_token(user)
+        # Create OTP for password reset and send to user's email
+        otp_obj = OTPVerification.create_otp_for_user(user)
+        subject = 'Password Reset - Legacy Prime'
+        message = f'''Here's your password reset code:
 
-        # 🔥 For now, just return the link (in production, send via email)
-        reset_link = f"http://localhost:8000/api/accounts/reset-password-confirm/?uidb64={uidb64}&token={token}"
+{otp_obj.otp}
 
-        return Response({"reset_link": reset_link})
+This code will expire in 10 minutes. Do not share this code with anyone.'''
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.EMAIL_HOST_USER,
+                [email],
+                fail_silently=False,
+            )
+        except Exception as e:
+            print(f"Failed to send reset OTP email: {e}")
+            return Response({"message": "Failed to send reset code."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        return Response({"message": "Password reset code sent to email."})
 
 
 class ResetPasswordConfirmView(APIView):
+    permission_classes = [permissions.AllowAny]
     def post(self, request):
+        # Support OTP-based reset: expect { email, otp, new_password }
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+        new_password = request.data.get('new_password') or request.data.get('password')
+
+        if email and otp and new_password:
+            try:
+                user = User.objects.get(email=email)
+            except User.DoesNotExist:
+                return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)
+
+            try:
+                otp_obj = OTPVerification.objects.filter(
+                    user=user,
+                    is_used=False,
+                    otp=otp
+                ).latest('created_at')
+            except OTPVerification.DoesNotExist:
+                return Response({"detail": "Invalid OTP."}, status=status.HTTP_400_BAD_REQUEST)
+
+            if not otp_obj.is_valid():
+                return Response({"detail": "OTP expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+            # All good — set new password and mark OTP used
+            user.set_password(new_password)
+            user.save()
+            otp_obj.is_used = True
+            otp_obj.save()
+
+            return Response({"detail": "Password has been reset successfully."})
+
+        # Fallback to existing token-based flow (uidb64 + token)
         serializer = SetNewPasswordSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
 
@@ -210,3 +261,125 @@ class ResetPasswordConfirmView(APIView):
         user.save()
 
         return Response({"detail": "Password has been reset successfully."})
+
+
+class VerifyResetOTPView(APIView):
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        email = request.data.get('email')
+        otp = request.data.get('otp')
+
+        if not email or not otp:
+            return Response({'detail': 'Email and OTP required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            user = User.objects.get(email=email)
+        except User.DoesNotExist:
+            return Response({'detail': 'User not found.'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            otp_obj = OTPVerification.objects.filter(user=user, is_used=False, otp=otp).latest('created_at')
+        except OTPVerification.DoesNotExist:
+            return Response({'detail': 'Invalid OTP.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if not otp_obj.is_valid():
+            return Response({'detail': 'OTP expired.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        return Response({'detail': 'OTP is valid.'})
+
+
+from rest_framework_simplejwt.views import TokenObtainPairView
+from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from django.contrib.auth import authenticate
+
+class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = "email"
+
+    def validate(self, attrs):
+        email = attrs.get("email")
+        password = attrs.get("password")
+
+        if email and password:
+            # Check if user exists first
+            try:
+                user = User.objects.get(email=email)
+                print(f"Found user {user.username} with email {email}")
+            except User.DoesNotExist:
+                print(f"No user found with email {email}")
+                raise InvalidToken("No active account found with the given credentials")
+
+            # Now try to authenticate
+            user = authenticate(
+                request=self.context.get("request"),
+                username=user.username,  # Django's auth expects username
+                password=password
+            )
+
+            if not user:
+                print(f"Authentication failed for email {email}")
+                raise InvalidToken("No active account found with the given credentials")
+
+            if not user.is_active:
+                print(f"User {user.username} is not active")
+                raise InvalidToken("User account is disabled")
+
+            print(f"Successful authentication for {user.username}")
+            refresh = self.get_token(user)
+
+            return {
+                "access": str(refresh.access_token),
+                "refresh": str(refresh)
+            }
+        else:
+            raise InvalidToken("Must include email and password fields")
+
+class CustomTokenObtainPairView(TokenObtainPairView):
+    """Custom token view that handles login with email."""
+    serializer_class = EmailTokenObtainPairSerializer
+
+    def post(self, request, *args, **kwargs):
+        print("Login attempt data:", request.data)
+        
+        # Rename username field to email if it exists
+        if "username" in request.data:
+            request.data["email"] = request.data.pop("username")
+        
+        try:
+            response = super().post(request, *args, **kwargs)
+            print("Login successful")
+            return response
+        except InvalidToken as e:
+            print("Login error:", str(e))
+            return Response(
+                {"detail": str(e)},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            print("Unexpected login error:", str(e))
+            return Response(
+                {"detail": "An error occurred during login. Please try again."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+
+class LogoutView(APIView):
+    """Invalidate/blacklist the provided refresh token so it can't be reused.
+
+    Expects JSON: { "refresh": "<refresh_token>" }
+    """
+    permission_classes = [permissions.AllowAny]
+
+    def post(self, request):
+        refresh = request.data.get('refresh')
+        if not refresh:
+            return Response({'detail': 'Refresh token required.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            token = RefreshToken(refresh)
+            # blacklist the token (requires token_blacklist app)
+            token.blacklist()
+            return Response({'detail': 'Logout successful.'}, status=status.HTTP_200_OK)
+        except Exception:
+            return Response({'detail': 'Invalid token.'}, status=status.HTTP_400_BAD_REQUEST)

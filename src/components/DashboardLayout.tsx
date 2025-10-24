@@ -11,11 +11,13 @@ import {
   X,
   ChevronDown,
 } from "lucide-react";
+import { useAuth } from "@/context/AuthContext";
 
 export default function DashboardLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
 
   // Dropdown state and ref
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -138,9 +140,14 @@ export default function DashboardLayout() {
                 </Link>
                 <button
                   className="block w-full text-left px-4 py-2 text-sm hover:bg-muted transition-colors text-destructive"
-                  onClick={() => {
+                  onClick={async () => {
                     setDropdownOpen(false);
-                    window.location.href = 'http://localhost:8080/';
+                    try {
+                      await logout();
+                    } catch (e) {
+                      // ignore - logout should clear local tokens regardless
+                    }
+                    navigate('/');
                   }}
                 >
                   Logout

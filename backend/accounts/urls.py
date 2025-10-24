@@ -7,7 +7,10 @@ from .views import (
     ResetPasswordRequestView,
     ResetPasswordConfirmView,
     VerifyOTPView,
-    ResendOTPView
+    ResendOTPView,
+    LogoutView,
+    CustomTokenObtainPairView,
+    VerifyResetOTPView,
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -23,10 +26,12 @@ urlpatterns = [
     path("reset-password-confirm/", ResetPasswordConfirmView.as_view(), name="reset-password-confirm"),
     
     # JWT Token endpoints
-    path('token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('token/', CustomTokenObtainPairView.as_view(), name='token_obtain_pair'),
     path('token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('logout/', LogoutView.as_view(), name='logout'),
     
     # OTP verification endpoints
     path('verify-otp/', VerifyOTPView.as_view(), name='verify-otp'),
+    path('verify-reset-otp/', VerifyResetOTPView.as_view(), name='verify-reset-otp'),
     path('resend-otp/', ResendOTPView.as_view(), name='resend-otp'),
 ]

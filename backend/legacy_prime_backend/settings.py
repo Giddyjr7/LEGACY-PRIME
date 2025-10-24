@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     # Third party apps
     'rest_framework',
     'rest_framework_simplejwt',
+    'rest_framework_simplejwt.token_blacklist',
     'rest_framework.authtoken',
     'corsheaders',
 
@@ -136,12 +137,24 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'  # Update this with your email provider
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = ''  # Add your email
-EMAIL_HOST_PASSWORD = ''  # Add your app password
+# Use console backend in development to avoid real SMTP failures and make
+# signup/OTP development easier. In production, switch to SMTP or another
+# real email backend and populate the EMAIL_HOST* settings from environment
+# variables or your secrets manager.
+if DEBUG:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+    EMAIL_HOST = ''
+    EMAIL_PORT = None
+    EMAIL_USE_TLS = False
+    EMAIL_HOST_USER = ''
+    EMAIL_HOST_PASSWORD = ''
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = 'smtp.gmail.com'  # Update this with your email provider
+    EMAIL_PORT = 587
+    EMAIL_USE_TLS = True
+    EMAIL_HOST_USER = ''  # Add your email (from env in production)
+    EMAIL_HOST_PASSWORD = ''  # Add your app password (from env in production)
 
 
 REST_FRAMEWORK = {
@@ -166,4 +179,6 @@ SIMPLE_JWT = {
     "AUTH_COOKIE_SECURE": False,     # True if using HTTPS
     "AUTH_COOKIE_HTTP_ONLY": True,   # Important for security
     "AUTH_COOKIE_SAMESITE": "Lax",
+    # Allow unverified users to obtain tokens (we'll check verification in views)
+    "USER_AUTHENTICATION_RULE": "rest_framework_simplejwt.authentication.default_user_authentication_rule",
 }

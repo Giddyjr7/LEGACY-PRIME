@@ -1,7 +1,5 @@
 from django.db import models, transaction
 from django.contrib.auth import get_user_model
-from django.db.models.signals import post_save
-from django.dispatch import receiver
 from decimal import Decimal
 
 User = get_user_model()
@@ -76,8 +74,8 @@ class Wallet(models.Model):
         )['total'] or Decimal('0')
         return self.balance - locked_funds
 
-@receiver(post_save, sender=User)
-def create_user_wallet(sender, instance, created, **kwargs):
-    """Automatically create wallet for new users"""
-    if created:
-        Wallet.objects.create(user=instance)
+# Wallet creation is handled in `wallets/signals.py` to keep signal handlers
+# centralized. Avoid registering another post_save receiver here to prevent
+# duplicate executions that could attempt to create the same OneToOne wallet
+# more than once.
+

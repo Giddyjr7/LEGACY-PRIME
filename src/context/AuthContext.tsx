@@ -29,7 +29,7 @@ interface AuthContextType {
   clearPending: () => void;
   login: (email: string, password: string) => Promise<void>;
   register: (username: string, email: string, password: string, confirmPassword: string) => Promise<void>;
-  logout: () => void;
+  logout: () => Promise<void>;
   verifyOTP: (email: string, otp: string) => Promise<void>;
   resendOTP: (email: string) => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
@@ -107,18 +107,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const login = async (email: string, password: string) => {
     try {
+      // Send email directly (backend expects email field now)
       const response = await axios.post(`${API_URL}/accounts/token/`, {
         email,
         password
       });
       
-      localStorage.setItem("access_token", response.data.access);
-      localStorage.setItem("refresh_token", response.data.refresh);
-      
-      // Get user profile
+      // Check if user is verified before proceeding
       const userResponse = await axios.get(`${API_URL}/accounts/profile/`, {
         headers: { Authorization: `Bearer ${response.data.access}` }
       });
+      
+      if (!userResponse.data.is_verified) {
+        // Store email for OTP verification and throw specific error
+        setPendingEmail(email);
+        throw new Error("Please verify your email before logging in");
+      }
+      
+      localStorage.setItem("access_token", response.data.access);
+      localStorage.setItem("refresh_token", response.data.refresh);
       
       setUser(userResponse.data);
       setIsAuthenticated(true);
@@ -128,7 +135,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         username: userResponse.data.username 
       }));
     } catch (error: any) {
-      throw new Error(error.response?.data?.detail || "Login failed");
+      console.log('Login error response:', error.response?.data);  // Debug log
+      
+      const errorMessage = error.response?.data?.detail || 
+                          error.response?.data?.error ||
+                          error.message ||
+                          "Login failed";
+      
+      if (error.response?.status === 401) {
+        throw new Error("Invalid email or password");
+      }
+      
+      throw new Error(errorMessage);
     }
   };
 
@@ -155,15 +173,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       const data = error.response?.data;
 
-      // ✅ Proper API error extraction (fallback to a readable message)
-      const message =
-        data?.confirmPassword?.[0] ||
-        data?.password?.[0] ||
-        data?.email?.[0] ||
-        data?.username?.[0] ||
-        data?.detail ||
-        "Registration failed";
+      const extractMessage = (obj: any): string | null => {
+        if (!obj) return null;
+        if (typeof obj === 'string') return obj;
+        if (Array.isArray(obj)) return obj.join(' ');
 
+        // Common DRF keys in order of priority
+        const keys = ['confirmPassword', 'password', 'email', 'username', 'non_field_errors', 'detail', 'message'];
+        for (const k of keys) {
+          const v = obj[k];
+          if (Array.isArray(v) && v.length) return String(v[0]);
+          if (typeof v === 'string') return v;
+        }
+
+        // Fallback: look for any first string in nested objects
+        for (const k in obj) {
+          const v = obj[k];
+          if (Array.isArray(v) && v.length) return String(v[0]);
+          if (typeof v === 'string') return v;
+          if (typeof v === 'object') {
+            const nested = extractMessage(v);
+            if (nested) return nested;
+          }
+        }
+
+        return null;
+      };
+
+      const message = extractMessage(data) || error.message || 'Registration failed';
       throw new Error(message);
     }
   };
@@ -243,11 +280,21 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    localStorage.removeItem("access_token");
-    localStorage.removeItem("refresh_token");
-    setUser(null);
-    setIsAuthenticated(false);
+  const logout = async () => {
+    const refreshToken = localStorage.getItem("refresh_token");
+    try {
+      if (refreshToken) {
+        await axios.post(`${API_URL}/accounts/logout/`, { refresh: refreshToken });
+      }
+    } catch (error: any) {
+      // Log but continue to clear local state anyway
+      console.log("Logout error (backend):", error?.response?.data || error?.message);
+    } finally {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      setUser(null);
+      setIsAuthenticated(false);
+    }
   };
 
   return (

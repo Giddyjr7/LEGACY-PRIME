@@ -1,25 +1,56 @@
 import { useState } from "react"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useLocation } from "react-router-dom"
+import axios from "axios"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
+import { useToast } from "@/hooks/use-toast"
+
+const API_URL = "http://localhost:8000/api"
 
 const ConfirmPassword = () => {
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [loading, setLoading] = useState(false)
   const navigate = useNavigate()
+  const location = useLocation()
+  const { toast } = useToast()
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Expect email and otp passed in location.state from ResetPassword.tsx
+  const state = (location.state || {}) as { email?: string; otp?: string }
+  const email = state.email || ""
+  const otpFromState = state.otp || ""
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
     if (password !== confirmPassword) {
-      alert("Passwords do not match")
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
       return
     }
 
-    // Later: call backend to update password
-    // if success then redirect:
-    navigate("/login")
+    if (!email || !otpFromState) {
+      toast({ title: "Missing data", description: "Email or OTP missing. Start the reset flow again.", variant: "destructive" })
+      navigate('/reset-password')
+      return
+    }
+
+    setLoading(true)
+    try {
+      const resp = await axios.post(`${API_URL}/accounts/reset-password-confirm/`, {
+        email,
+        otp: otpFromState,
+        new_password: password,
+      })
+
+      toast({ title: "Success", description: resp.data.detail || "Password reset successful" })
+      navigate('/login')
+    } catch (err: any) {
+      console.log('Reset confirm error:', err?.response?.data || err?.message)
+      toast({ title: 'Error', description: err?.response?.data?.detail || 'Failed to reset password', variant: 'destructive' })
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (

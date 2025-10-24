@@ -1,5 +1,9 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { useToast } from "@/hooks/use-toast";
+
+const API_URL = "http://localhost:8000/api";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -11,18 +15,19 @@ const ForgotPassword = () => {
   const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // TODO integrate send OTP API
-      await new Promise((r) => setTimeout(r, 1500));
+      const resp = await axios.post(`${API_URL}/accounts/reset-password/`, { email });
+      // backend returns generic message; in DEBUG you'll see the OTP in server console
       setOtpSent(true);
-      alert("OTP sent to your email!");
-    } catch {
-      alert("Something went wrong!");
+      toast({ title: "OTP Sent", description: resp.data.message || "OTP sent to email." });
+    } catch (err: any) {
+      console.log("Reset OTP error:", err?.response?.data || err?.message);
+      alert(err?.response?.data?.message || "Something went wrong!");
     } finally {
       setLoading(false);
     }
@@ -31,13 +36,13 @@ const ForgotPassword = () => {
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-
     try {
-      // TODO integrate verify OTP API
-      await new Promise((r) => setTimeout(r, 1500));
-      navigate("/confirm-password");
-    } catch {
-      alert("Invalid OTP!");
+      const resp = await axios.post(`${API_URL}/accounts/verify-reset-otp/`, { email, otp });
+      // If valid, navigate to confirm password and pass email+otp in state
+      navigate("/confirm-password", { state: { email, otp } });
+    } catch (err: any) {
+      console.log("Verify reset OTP error:", err?.response?.data || err?.message);
+      alert(err?.response?.data?.detail || "Invalid OTP!");
     } finally {
       setLoading(false);
     }

@@ -45,7 +45,16 @@ class RegisterSerializer(serializers.ModelSerializer):
 
         # Generate and send OTP
         otp_obj = OTPVerification.create_otp_for_user(user)
-        self._send_otp_email(user.email, otp_obj.otp)
+        try:
+            # Attempt to send OTP email; if sending fails, remove the created user
+            # to avoid partial/ghost accounts and surface a clear error to client.
+            self._send_otp_email(user.email, otp_obj.otp)
+        except Exception as e:
+            # cleanup: deleting the user will cascade delete the OTP
+            user.delete()
+            raise serializers.ValidationError({
+                "detail": "Failed to send verification email. Please try again later."
+            })
 
         return user
 
@@ -58,22 +67,20 @@ Your verification code is: {otp}
 This code will expire in 10 minutes.
 Do not share this code with anyone.
 '''
-        try:
-            send_mail(
-                subject,
-                message,
-                settings.EMAIL_HOST_USER,
-                [email],
-                fail_silently=False,
-            )
-        except Exception as e:
-            print(f"Failed to send OTP email: {str(e)}")
+        # Let exceptions bubble up to caller so it can decide how to handle them
+        send_mail(
+            subject,
+            message,
+            settings.EMAIL_HOST_USER,
+            [email],
+            fail_silently=False,
+        )
 
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ("id", "username", "email", "is_verified", "balance")
+        fields = ("id", "username", "email", "is_verified")
 
 
 

@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
-  const { pendingEmail, clearPending } = useAuthContext();
+  const { pendingEmail, clearPending } = useAuth();
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");

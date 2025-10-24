@@ -10,6 +10,4 @@ def create_wallet(sender, instance, created, **kwargs):
     if created:
         Wallet.objects.create(user=instance)
 
-@receiver(post_save, sender=User)
-def save_wallet(sender, instance, **kwargs):
-    instance.wallet.save()
+

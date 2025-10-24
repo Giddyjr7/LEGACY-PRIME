@@ -1,37 +1,75 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const VerifyOtp = () => {
-  const { pendingEmail, setPendingEmail } = useAuthContext();
+  const { pendingEmail, verifyOTP, resendOTP } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [otp, setOtp] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
-  // if no pending email, send user back to signup
-  if (!pendingEmail) {
-    // optional: you could navigate back to signup automatically
-  }
+  useEffect(() => {
+    if (!pendingEmail) {
+      navigate("/signup");
+    }
+  }, [pendingEmail, navigate]);
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setTimeout(() => setResendTimer(prev => prev - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [resendTimer]);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!pendingEmail) return;
+    
     setLoading(true);
     try {
-      // TODO: POST to backend verify endpoint with { email: pendingEmail, otp }
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
-
-      // clear pendingEmail if you want (we'll keep it available for complete-profile if needed)
-      // setPendingEmail(null);
-
-      // on success, go to complete profile
+      await verifyOTP(pendingEmail, otp);
+      toast({
+        title: "Success",
+        description: "Email verified successfully!",
+      });
       navigate("/complete-profile");
-    } catch (err) {
-      alert("OTP verification failed");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleResendOTP = async () => {
+    if (!pendingEmail || resendTimer > 0) return;
+    
+    setResendLoading(true);
+    try {
+      await resendOTP(pendingEmail);
+      setResendTimer(60); // Start 60 second countdown
+      toast({
+        title: "Success",
+        description: "New verification code sent to your email.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setResendLoading(false);
     }
   };
 
@@ -58,19 +96,49 @@ const VerifyOtp = () => {
             />
 
             <Button type="submit" disabled={loading} className="w-full bg-primary text-primary-foreground hover:bg-primary/80">
-              {loading ? "Verifying..." : "Verify OTP"}
+              {loading ? (
+                <>
+                  <div className="mr-2 h-4 w-4 animate-spin border-2 border-background border-t-transparent rounded-full" />
+                  Verifying...
+                </>
+              ) : (
+                "Verify OTP"
+              )}
             </Button>
+            
+            <div className="mt-4 text-center">
+              <p className="text-sm text-muted-foreground">
+                Didn't receive the code?
+              </p>
+              {resendTimer > 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Resend code in {resendTimer} seconds
+                </p>
+              ) : (
+                <Button
+                  type="button"
+                  variant="link"
+                  className="mt-1"
+                  onClick={handleResendOTP}
+                  disabled={resendLoading}
+                >
+                  {resendLoading ? (
+                    <>
+                      <div className="mr-2 h-4 w-4 animate-spin border-2 border-primary border-t-transparent rounded-full" />
+                      Sending...
+                    </>
+                  ) : (
+                    "Resend code"
+                  )}
+                </Button>
+              )}
+            </div>
           </form>
         </CardContent>
-
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-muted-foreground">
-            Didn’t receive code? (backend will provide resend) 
-          </p>
-        </CardFooter>
       </Card>
     </div>
   );
-};
+}
 
 export default VerifyOtp;
+

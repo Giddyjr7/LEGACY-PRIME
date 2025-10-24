@@ -20,7 +20,7 @@ class RegisterSerializer(serializers.ModelSerializer):
         validators=[validate_password],
         style={'input_type': 'password'}
     )
-    password2 = serializers.CharField(
+    confirmPassword = serializers.CharField(
         write_only=True,
         required=True,
         style={'input_type': 'password'}
@@ -28,27 +28,27 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ("username", "email", "password", "password2")
+        fields = ("username", "email", "password", "confirmPassword")
 
     def validate(self, attrs):
-        if attrs["password"] != attrs["password2"]:
-            raise serializers.ValidationError({"password": "Passwords do not match."})
+        if attrs["password"] != attrs["confirmPassword"]:
+            raise serializers.ValidationError({"confirmPassword": "Passwords do not match."})
         return attrs
 
     def create(self, validated_data):
-        validated_data.pop("password2")
+        validated_data.pop("confirmPassword")
         user = User.objects.create_user(
             username=validated_data["username"],
             email=validated_data["email"],
             password=validated_data["password"]
         )
-        
+
         # Generate and send OTP
         otp_obj = OTPVerification.create_otp_for_user(user)
         self._send_otp_email(user.email, otp_obj.otp)
-        
+
         return user
-        
+
     def _send_otp_email(self, email, otp):
         subject = 'Verify Your Legacy Prime Account'
         message = f'''Welcome to Legacy Prime!
@@ -67,7 +67,6 @@ Do not share this code with anyone.
                 fail_silently=False,
             )
         except Exception as e:
-            # Log the error but don't prevent user creation
             print(f"Failed to send OTP email: {str(e)}")
 
 

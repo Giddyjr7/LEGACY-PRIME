@@ -1,41 +1,62 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { useAuthContext } from "@/context/AuthContext";
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Signup = () => {
   const navigate = useNavigate();
-  const { setPendingEmail } = useAuthContext();
+  const { register } = useAuth();
+  const { toast } = useToast();
 
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    confirmPassword: ""
+  });
   const [loading, setLoading] = useState(false);
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleCreateAccount = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
-      alert("Passwords do not match");
+    if (formData.password !== formData.confirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive"
+      });
       return;
     }
 
     setLoading(true);
     try {
-      // TODO: call backend signup API to create user and send OTP to email
-      // Example: await api.signup({ username, email, password });
-      await new Promise((r) => setTimeout(r, 1000)); // simulate
+      await register(
+        formData.username,
+        formData.email,
+        formData.password,
+        formData.confirmPassword
+      );
 
-      // store pending email for later verify
-      setPendingEmail(email);
-
-      // navigate to OTP verification page
+      toast({
+        title: "Success",
+        description: "Registration successful! Please check your email for verification code.",
+      });
+      
+      // Navigate to OTP verification page
       navigate("/verify-otp");
-    } catch (err) {
-      console.error(err);
-      alert("Signup failed");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
     } finally {
       setLoading(false);
     }
@@ -51,31 +72,39 @@ const Signup = () => {
         <CardContent className="space-y-4">
           <form onSubmit={handleCreateAccount} className="space-y-4">
             <Input
+              name="username"
               placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              value={formData.username}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
+              required
             />
             <Input
+              name="email"
               type="email"
               placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={formData.email}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
+              required
             />
             <Input
+              name="password"
               type="password"
               placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={formData.password}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
+              required
             />
             <Input
+              name="confirmPassword"
               type="password"
               placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
+              value={formData.confirmPassword}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
+              required
             />
 
             <Button
@@ -90,7 +119,7 @@ const Signup = () => {
 
         <CardFooter className="flex justify-center">
           <p className="text-sm text-muted-foreground">
-            Already registered? <a href="/login" className="text-primary hover:underline">Sign in</a>
+            Already registered? <Link to="/login" className="text-primary hover:underline">Sign in</Link>
           </p>
         </CardFooter>
       </Card>

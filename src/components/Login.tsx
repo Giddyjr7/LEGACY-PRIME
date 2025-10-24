@@ -1,18 +1,42 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card"
 import { Link, useNavigate } from "react-router-dom"
+import { useAuth } from "@/context/AuthContext";
+import { useToast } from "@/hooks/use-toast";
 
 const Login = () => {
   const navigate = useNavigate();
+  const { login } = useAuth();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: ""
+  });
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // ✅ Later replace with backend auth logic
+    setIsLoading(true);
+    
     try {
-      sessionStorage.setItem('justLoggedIn', JSON.stringify({ username: 'Giddyjr7' }));
-    } catch (err) {}
-    navigate("/dashboard");
+      await login(formData.email, formData.password);
+      navigate("/dashboard");
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -26,13 +50,19 @@ const Login = () => {
           <form onSubmit={handleLogin} className="space-y-4">
             <Input
               type="email"
+              name="email"
               placeholder="Email"
+              value={formData.email}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
               required
             />
             <Input
               type="password"
+              name="password"
               placeholder="Password"
+              value={formData.password}
+              onChange={handleChange}
               className="bg-input text-foreground border border-border"
               required
             />
@@ -49,9 +79,10 @@ const Login = () => {
 
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full bg-primary text-primary-foreground hover:bg-primary/80"
             >
-              Sign In
+              {isLoading ? "Signing in..." : "Sign In"}
             </Button>
           </form>
         </CardContent>
